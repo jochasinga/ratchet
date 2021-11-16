@@ -1,6 +1,7 @@
 #lang racket
 
 (provide (contract-out
+          [hex->rgb (-> string? list?)]
           [base16->10 (-> char? (and/c exact-nonnegative-integer? u8?))]
           [base10->16 (-> (and/c exact-nonnegative-integer? u8?) char?)]
           [u8? (-> exact-nonnegative-integer? boolean?)]))
@@ -36,17 +37,27 @@
 
 ;; Pad one or more zeroes to the remaining digits of the hex string.
 (define (pad-zero hexstr #:bits [bits 512])
-  (let* ([digit (inexact->exact (* 2 (log bits 8)))]
-        [diff (- digit (string-length hexstr))])
+  (let* ([digits (inexact->exact (* 2 (log bits 8)))]
+         [diff (- digits (string-length hexstr))])
     (if (< diff 0)
         hexstr
         (string-append hexstr (make-string diff #\0)))))
 
+;; Check if the hex string has consecutive repeated byte char.
+;; Unused for now.
+(define (repeated-bytes? hexstr)
+  (let* ([charlist (string->list hexstr)]
+         [len (length charlist)]
+         [first (car charlist)])
+    (if (= len 0)
+        false
+        (let ([chars (filter (lambda (c) (char=? c first)) charlist)])
+          (= (length chars) len)))))
 
-;; TODO: This is not how hex colors are handled at all (by padding zeroes)!
-;; Given "FFF", the rest of the bytes are filled with "FFF",
-;; Given "FA0", the rest are filled with "FFAA00",
-;; Given "AA0", the rest are filled with "AAAA00".
+
+;; Convert hex string to 64-bit RGB list.
+;; It tries to do the right thing by padding zeroes
+;; where the chars are missing.
 (define (hex->rgb str)
   (let ([chars (string->list (pad-zero str))])
     (letrec ([aux (lambda (chars acc)
